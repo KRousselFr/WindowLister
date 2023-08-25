@@ -1,0 +1,13 @@
+syntax: glob
+
+*.suo
+*.sdf
+*.opensdf
+*.ipch
+ipch/
+Debug/
+Release/
+*.vcxproj.user
+.DS_Store
+
+.git/
