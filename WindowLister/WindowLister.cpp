@@ -473,6 +473,37 @@ MainWndProc(HWND hMainWnd,
 		}
 		break;
 
+	case WM_NOTIFY:
+		pNotify = (LPNMHDR)lParam;
+		if (pNotify->hwndFrom != hWndTreeview) break;
+		switch (pNotify->code)
+		{
+		case NM_DBLCLK:
+			// désactive le déroulement/enroulement des noeuds
+			// lors d'un double-clic dans le "treeview" central
+			PostMessageW(hMainWnd, WM_COMMAND, IDM_PROPERTIES, NULL);
+			// retourne un nombre non-nul pour désactiver
+			// le comportement par défaut du TreeView pour le double-clic
+			return 1;
+		case NM_RCLICK:
+			// lors d'un clic droit sur le "treeview", sélectionne
+			// le noeud sous le curseur avant d'ouvrir le menu contextuel
+			ok = GetCursorPos(&pt);
+			if (!ok) break;
+			ok = ScreenToClient(hWndTreeview,
+			                    &pt);
+			if (!ok) break;
+			TVHITTESTINFO tvhti;
+			tvhti.pt = pt;
+			HTREEITEM hItem = TreeView_HitTest(hWndTreeview, &tvhti);
+			if ((hItem == NULL) || !(tvhti.flags & TVHT_ONITEM)) {
+				break;
+			}
+			TreeView_SelectItem(hWndTreeview, hItem);
+			break;
+		}
+		break;
+
 	case WM_CONTEXTMENU:
 		// ouvre le menu contextuel défini pour le "treeview" central
 		// et uniquement pour lui
@@ -482,6 +513,7 @@ MainWndProc(HWND hMainWnd,
 		pt.y = HIWORD(lParam);
 		hMenu = LoadMenuW(hInst, MAKEINTRESOURCEW(IDC_WINTREEVIEW));
 		hMenu = GetSubMenu(hMenu, 0);
+		SetMenuDefaultItem(hMenu, IDM_PROPERTIES, FALSE);
 		TrackPopupMenu(hMenu,
 		               TPM_RIGHTBUTTON,
 		               pt.x,
@@ -489,21 +521,6 @@ MainWndProc(HWND hMainWnd,
 		               0,
 		               hMainWnd,
 		               NULL);
-		break;
-
-	case WM_NOTIFY:
-		// désactive le déroulement/enroulement des noeuds
-		// lors d'un double-clic dans le "treeview" central
-		pNotify = (LPNMHDR)lParam;
-		if (pNotify->hwndFrom != hWndTreeview) break;
-		switch (pNotify->code)
-		{
-		case NM_DBLCLK:
-			PostMessageW(hMainWnd, WM_COMMAND, IDM_PROPERTIES, NULL);
-			/* retourne un nombre non-nul pour désactiver
-			   le comportement par défaut du TreeView pour le double-clic */
-			return 1;
-		}
 		break;
 
 	case WM_COMMAND:
@@ -576,10 +593,11 @@ MainWndProc(HWND hMainWnd,
 				swprintf(wndPID, MAX_NUMSTR_SZ, L"%u", pid);
 				swprintf(wndTID, MAX_NUMSTR_SZ, L"%u", tid);
 				/* affiche la boîte de dialogue idoine */
-				dlgRes = DialogBoxW(hInst,
-				                    MAKEINTRESOURCEW(IDD_WINDOW_PROPERTIES),
-				                    hMainWnd,
-				                    WindowPropertiesDialogProc);
+				dlgRes = DialogBoxParamW(hInst,
+				                         MAKEINTRESOURCEW(IDD_WINDOW_PROPERTIES),
+				                         hMainWnd,
+				                         WindowPropertiesDialogProc,
+				                         0L);
 				if (dlgRes < 0)
 				{
 					DWORD errCode = MsgErreurSys(MSG_ERR_DIALOGBOX_FAIL);
